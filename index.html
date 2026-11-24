@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J&D Biltong - Cape Town</title>
+<style>
+*{box-sizing:border-box} body{font-family:Arial,sans-serif;margin:0;background:#1a0f08}
+header{background:#1a0f08;text-align:center} header img{width:100%;max-width:620px;display:block;margin:auto}
+.wrap{max-width:620px;margin:auto;padding:16px;background:#FFF8E7}
+.card{background:#fff;border:2px solid #ffa500;border-radius:14px;padding:14px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.price{font-weight:bold;font-size:18px} .stock{font-size:12px;color:#666} .out{color:#c00;font-weight:bold;font-size:12px}
+.qty{display:flex;align-items:center;gap:8px} .qty button{width:36px;height:36px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:20px}
+.qty span{font-weight:bold;min-width:20px;text-align:center}
+input,select,textarea{width:100%;padding:12px;border:1px solid #ddd;border-radius:10px;margin:6px 0;font-size:15px}
+.btn{width:100%;padding:14px;border:0;border-radius:12px;font-weight:bold;font-size:16px;margin-top:8px}
+.green{background:#25D366} .black{background:#111;color:#fff} .gold{background:#FFD700}
+.small{font-size:12px;color:#666;text-align:center;margin-top:10px}
+table{width:100%;border-collapse:collapse;font-size:13px} th,td{border-bottom:1px solid #eee;padding:8px;text-align:left}
+.adminBtn{background:#111;color:#fff;border:0;padding:10px 14px;border-radius:10px;width:100%;margin-top:10px}
+.iconBtn{padding:6px 10px;border:1px solid #ddd;background:#fff;border-radius:8px;margin:2px}
+.setInput{width:70px !important;padding:8px !important;display:inline-block}
+.order-title{background:linear-gradient(#ffcf3f,#ff8c00);border-radius:12px;padding:14px;text-align:center;font-size:28px;font-weight:900;font-style:italic;margin-bottom:12px}
+</style>
+</head>
+<body>
+<header><img src="logo.jpg" alt="J&D Biltong Logo"></header>
+<div class="wrap" id="shopView">
+<div class="order-title">ORDER FORM</div>
+<p style="text-align:center">Tap + to add. Stock updates live.</p>
+<div id="products"></div>
+<div class="card"><h3>Your Order</h3><div id="summary">No items yet</div><h3 id="total">Total: R0</h3></div>
+<div class="card"><h3>Customer Details</h3>
+<input id="cName" placeholder="Your Full Name *">
+<input id="cPhone" placeholder="Phone / WhatsApp Number *">
+<select id="cTime"><option>Collection: Today - ASAP</option><option>Collection: Tomorrow Morning</option><option>Collection: Tomorrow Afternoon</option><option>Collection: This Weekend</option></select>
+<textarea id="cNote" placeholder="Notes (optional)"></textarea>
+</div>
+<button class="btn green" onclick="sendOrder('whatsapp')">💬 Send Order via WhatsApp</button>
+<button class="btn black" onclick="sendOrder('email')">📧 Send Order via Email</button>
+<p class="small">📍 COLLECTION ONLY - Cape Town<br>Payment on collection - Cash / EFT / SnapScan<br>WhatsApp: 076 430 1026 • Email: Rhederjohan@gmail.com</p>
+<button class="adminBtn" onclick="showAdmin()">🔐 Admin Login (Owner Only)</button>
+</div>
+<div class="wrap" id="adminView" style="display:none">
+<h2>🔐 J&D ADMIN DASHBOARD</h2>
+<div id="loginBox" class="card"><p>Enter Admin Password</p><input type="password" id="adminPass" placeholder="Password"><button class="btn black" onclick="login()">Login</button><p class="small">Default: biltong123</p><button class="btn" onclick="backToShop()">← Back to Shop</button></div>
+<div id="dash" style="display:none">
+<button class="btn" onclick="backToShop()">← Back to Shop</button>
+<div class="card"><h3>📦 Stock Control</h3><p class="small" style="text-align:left">Type exact stock and tap Set. Or use +1 / -1.</p><div id="adminProducts"></div></div>
+<div class="card"><h3>➕ Add New Product</h3><input id="newName" placeholder="Product Name e.g. Garlic Biltong"><input id="newPrice" type="number" placeholder="Price e.g. 50"><input id="newStock" type="number" placeholder="Starting Stock e.g. 20"><button class="btn gold" onclick="addProduct()">Add Product</button></div>
+<div class="card"><h3>🧾 Orders (<span id="orderCount">0</span>)</h3><div id="ordersList"></div><button class="btn" onclick="clearOrders()">Clear All Orders</button></div>
+<div class="card"><h3>📊 Stock Movement Log</h3><div id="movementList"></div><button class="btn" onclick="clearMovement()">Clear Log</button></div>
+<button class="btn black" onclick="logout()">Logout</button>
+</div>
+</div>
+<script>
+const DEFAULT_PRODUCTS=[{id:1,name:"Plain Biltong (80g)",price:45,stock:0,active:true},{id:2,name:"Chilli Biltong (80g)",price:45,stock:0,active:true},{id:3,name:"Droëwors (80g)",price:45,stock:0,active:true},{id:4,name:"Bacon Biltong (80g)",price:55,stock:0,active:false},{id:5,name:"Chilli Sticks (80g)",price:45,stock:0,active:true},{id:6,name:"Eggs (Tray of 30)",price:65,stock:0,active:true}];
+let products=JSON.parse(localStorage.getItem('jd_products')||'null')||DEFAULT_PRODUCTS;
+let cart={}; let orders=JSON.parse(localStorage.getItem('jd_orders')||'[]'); let movements=JSON.parse(localStorage.getItem('jd_movements')||'[]');
+function save(){localStorage.setItem('jd_products',JSON.stringify(products));localStorage.setItem('jd_orders',JSON.stringify(orders));localStorage.setItem('jd_movements',JSON.stringify(movements));}
+function logMove(name,change,reason,newStock){movements.unshift({date:new Date().toLocaleString(),name,change,reason,newStock});save();}
+function renderShop(){let h='';products.forEach(p=>{if(!p.active)return;let inCart=cart[p.id]||0;let isOut=p.stock<=0;h+=`<div class="card"><div class="row"><div><b>${p.name}</b><br><span class="stock">${isOut?'<span class="out">OUT OF STOCK</span>':p.stock+' in stock'}</span></div><div style="text-align:right"><div class="price">R${p.price}</div><div class="qty"><button onclick="changeQty(${p.id},-1)">-</button><span>${inCart}</span><button onclick="changeQty(${p.id},1)" ${isOut||inCart>=p.stock?'disabled':''}>+</button></div></div></div></div>`;});document.getElementById('products').innerHTML=h||'<p>No products</p>';let sum='',total=0;for(let id in cart){let p=products.find(x=>x.id==id);if(!p)continue;total+=p.price*cart[id];sum+=`${p.name} x ${cart[id]} = R${p.price*cart[id]}<br>`;}document.getElementById('summary').innerHTML=sum||'No items yet';document.getElementById('total').innerText='Total: R'+total;}
+function changeQty(id,d){let p=products.find(x=>x.id==id);let cur=cart[id]||0;let n=cur+d;if(n<0)n=0;if(n>p.stock)n=p.stock;if(n==0)delete cart[id];else cart[id]=n;renderShop();}
+function sendOrder(type){let name=document.getElementById('cName').value.trim();let phone=document.getElementById('cPhone').value.trim();if(!name||!phone){alert('Please enter Name and Phone');return;}if(Object.keys(cart).length==0){alert('Add at least 1 item');return;}let lines=[],total=0;for(let id in cart){let p=products.find(x=>x.id==id);total+=p.price*cart[id];lines.push(`${p.name} x ${cart[id]} = R${p.price*cart[id]}`);}let order={date:new Date().toLocaleString(),name,phone,time:document.getElementById('cTime').value,note:document.getElementById('cNote').value,items:lines.join(', '),total};orders.unshift(order);for(let id in cart){let p=products.find(x=>x.id==id);p.stock-=cart[id];logMove(p.name,-cart[id],`Order from ${name}`,p.stock);}save();cart={};renderShop();let msg=`NEW ORDER - J&D Biltong%0A%0A${lines.join('%0A')}%0A%0ATotal: R${total}%0A%0AName: ${name}%0APhone: ${phone}%0A${order.time}%0ANote: ${order.note||'-'}`;if(type=='whatsapp')window.open(`https://wa.me/27764301026?text=${msg}`,'_blank');else window.location.href=`mailto:Rhederjohan@gmail.com?subject=New Order - ${name} - R${total}&body=${msg.replaceAll('%0A','\n')}`;alert('Order saved! Stock updated.');renderAdmin();}
+function showAdmin(){document.getElementById('shopView').style.display='none';document.getElementById('adminView').style.display='block';}
+function backToShop(){document.getElementById('adminView').style.display='none';document.getElementById('shopView').style.display='block';renderShop();}
+function login(){if(document.getElementById('adminPass').value=='biltong123'){document.getElementById('loginBox').style.display='none';document.getElementById('dash').style.display='block';renderAdmin();}else alert('Wrong password');}
+function logout(){document.getElementById('dash').style.display='none';document.getElementById('loginBox').style.display='block';backToShop();}
+function renderAdmin(){let h='<table><tr><th>Product</th><th>Stock</th><th>Set Stock</th><th>Status</th><th>Action</th></tr>';products.forEach(p=>{h+=`<tr><td><b>${p.name}</b><br>R${p.price}</td><td><b>${p.stock}</b></td><td><input class="setInput" id="set-${p.id}" type="number" value="${p.stock}"> <button class="iconBtn" onclick="setStock(${p.id})">Set</button></td><td>${p.active&&p.stock>0?'✅ IN':'❌ OUT'}</td><td><button class="iconBtn" onclick="adjustStock(${p.id},1)">+1</button><button class="iconBtn" onclick="adjustStock(${p.id},-1)">-1</button><br><button class="iconBtn" onclick="toggleProduct(${p.id})">${p.active?'Put OUT':'Put IN'}</button> <button class="iconBtn" onclick="deleteProduct(${p.id})">🗑️</button></td></tr>`;});h+='</table>';document.getElementById('adminProducts').innerHTML=h;document.getElementById('orderCount').innerText=orders.length;document.getElementById('ordersList').innerHTML=orders.map(o=>`<div style="border-bottom:1px solid #eee;padding:8px 0"><b>${o.name}</b> - R${o.total}<br><small>${o.date} • ${o.phone} • ${o.time}<br>${o.items}</small></div>`).join('')||'No orders yet';document.getElementById('movementList').innerHTML=movements.map(m=>`<div style="border-bottom:1px solid #eee;padding:6px 0"><small>${m.date}</small><br>${m.name} <b>${m.change>0?'+':''}${m.change}</b> - ${m.reason} → ${m.newStock} left</div>`).join('')||'No movement yet';}
+function setStock(id){let p=products.find(x=>x.id==id);let v=parseInt(document.getElementById('set-'+id).value);if(isNaN(v)||v<0){alert('Enter valid number');return;}let diff=v-p.stock;p.stock=v;logMove(p.name,diff,'Stock set manually to '+v,p.stock);save();renderShop();renderAdmin();}
+function adjustStock(id,d){let p=products.find(x=>x.id==id);p.stock+=d;if(p.stock<0)p.stock=0;logMove(p.name,d,d>0?'Manual +1':'Manual -1',p.stock);save();renderShop();renderAdmin();}
+function toggleProduct(id){let p=products.find(x=>x.id==id);p.active=!p.active;save();renderShop();renderAdmin();}
+function deleteProduct(id){if(!confirm('Delete this product?'))return;products=products.filter(x=>x.id!=id);save();renderShop();renderAdmin();}
+function addProduct(){let n=document.getElementById('newName').value.trim();let pr=parseInt(document.getElementById('newPrice').value);let st=parseInt(document.getElementById('newStock').value)||0;if(!n||!pr){alert('Enter name and price');return;}let np={id:Date.now(),name:n,price:pr,stock:st,active:true};products.push(np);logMove(n,st,'New product added',st);save();document.getElementById('newName').value='';renderShop();renderAdmin();alert('Product added!');}
+function clearOrders(){if(confirm('Clear all orders?')){orders=[];save();renderAdmin();}}
+function clearMovement(){if(confirm('Clear movement log?')){movements=[];save();renderAdmin();}}
+renderShop();
+</script>
+</body>
+</html>
